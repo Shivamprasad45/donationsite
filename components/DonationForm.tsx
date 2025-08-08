@@ -15,6 +15,13 @@ import {
 import { useDispatch } from "react-redux";
 import { addToast } from "@/store/slices/uiSlice";
 
+// Declare Razorpay type
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface DonationFormProps {
   charity: any;
   onSuccess?: (donation: any) => void;
@@ -56,12 +63,30 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
   const isAnonymous = watch("isAnonymous");
   const amount = watch("amount");
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
+  const loadRazorpay = (): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.async = true;
-      script.onload = () => resolve(true);
+
+      script.onload = () => {
+        if (window.Razorpay) {
+          resolve(true);
+        } else {
+          reject(new Error("Razorpay SDK failed to load"));
+        }
+      };
+
+      script.onerror = () => {
+        reject(new Error("Failed to load Razorpay SDK"));
+      };
+
       document.body.appendChild(script);
     });
   };
@@ -86,18 +111,23 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  console.log(_doc._id, "sdsdsd");
+
   const onSubmit = async (data: DonationFormData) => {
     if (!validateForm(data)) return;
 
     setProcessing(true);
 
     try {
+      console.log("Creating donation...", {
+        charityId: _doc.id || _doc._id,
+        amount: data.amount,
+      });
+
       // Create donation order
       const donationResult = await createDonation({
-        charityId: _doc.id || "68947b07640d0404198017e0",
+        charityId: _doc.id || _doc._id || "68947b07640d0404198017e0",
         amount: data.amount,
-        currency: "USD",
+        currency: "INR", // Changed to INR as your backend uses INR
         paymentMethod: "razorpay",
         isAnonymous: data.isAnonymous,
         message: data.message,
@@ -106,33 +136,67 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
         donorEmail: data.email,
       }).unwrap();
 
+      console.log("Donation created:", donationResult);
+
       // Load Razorpay SDK
-      await loadRazorpay();
+      try {
+        await loadRazorpay();
+        console.log("Razorpay SDK loaded successfully");
+      } catch (loadError) {
+        console.error("Failed to load Razorpay SDK:", loadError);
+        throw new Error("Failed to load payment gateway");
+      }
+
+      // Check if we have the required environment variable
+      const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID; // Note: NEXT_PUBLIC_ prefix for client-side
+
+      if (!razorpayKeyId) {
+        console.error("Razorpay Key ID not found in environment variables");
+        throw new Error("Payment gateway configuration error");
+      }
+
+      console.log("Razorpay Key ID:", razorpayKeyId);
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: donationResult.amount * 100,
-        currency: donationResult.currency,
-        name: _doc.name,
+        key: razorpayKeyId,
+        amount: donationResult.order?.amount || data.amount * 100, // Use order amount from response
+        currency: donationResult.order?.currency || "INR",
+        name: _doc.name || "Charity",
         description: `Donation to ${_doc.name}`,
-        order_id: donationResult.orderId,
+        order_id: donationResult.order?.id, // Use order ID from response
         handler: async (response: any) => {
-          // Confirm payment on successful transaction
-          await confirmDonation({
-            orderId: response.razorpay_order_id,
-            paymentId: response.razorpay_payment_id,
-            signature: response.razorpay_signature,
-          }).unwrap();
+          try {
+            console.log("Payment successful:", response);
 
-          dispatch(
-            addToast({
-              type: "success",
-              title: "Donation Successful!",
-              message: `Thank you for your donation of $${data.amount} to ${_doc.name}`,
-            })
-          );
+            // Confirm payment on successful transaction
+            await confirmDonation({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+            }).unwrap();
 
-          onSuccess?.(donationResult.donation);
+            dispatch(
+              addToast({
+                type: "success",
+                title: "Donation Successful!",
+                message: `Thank you for your donation of ₹${data.amount} to ${_doc.name}`,
+              })
+            );
+
+            onSuccess?.(donationResult.donation);
+          } catch (confirmError) {
+            console.error("Payment confirmation failed:", confirmError);
+            dispatch(
+              addToast({
+                type: "error",
+                title: "Payment Confirmation Failed",
+                message:
+                  "Payment was successful but confirmation failed. Please contact support.",
+              })
+            );
+          } finally {
+            setProcessing(false);
+          }
         },
         prefill: {
           name: data.isAnonymous ? "Anonymous" : data.name,
@@ -143,25 +207,39 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
         },
         modal: {
           ondismiss: () => {
+            console.log("Payment modal dismissed");
             setProcessing(false);
           },
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      console.log("Razorpay options:", options);
+
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK not available");
+      }
+
+      const rzp = new window.Razorpay(options);
+
       rzp.on("payment.failed", (response: any) => {
+        console.error("Payment failed:", response);
         dispatch(
           addToast({
             type: "error",
             title: "Payment Failed",
             message:
-              response.error.description || "Payment failed. Please try again.",
+              response.error?.description ||
+              "Payment failed. Please try again.",
           })
         );
+        setProcessing(false);
       });
 
+      console.log("Opening Razorpay modal...");
       rzp.open();
     } catch (error: any) {
+      console.error("Donation error:", error);
+
       dispatch(
         addToast({
           type: "error",
@@ -176,12 +254,12 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Make a Donation to {_doc.name}</CardTitle>
+        <CardTitle>Make a Donation to {_doc?.name || "Charity"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <Label htmlFor="amount">Donation Amount ($)</Label>
+            <Label htmlFor="amount">Donation Amount (₹)</Label>
             <Input
               id="amount"
               type="number"
@@ -195,7 +273,7 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {[10, 25, 50, 100].map((amt) => (
               <Button
                 key={amt}
@@ -204,7 +282,7 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
                 onClick={() => setValue("amount", amt)}
                 className="text-sm"
               >
-                ${amt}
+                ₹{amt}
               </Button>
             ))}
           </div>
@@ -266,7 +344,7 @@ export function DonationForm({ charity, onSuccess }: DonationFormProps) {
           </div>
 
           <Button type="submit" className="w-full" disabled={processing}>
-            {processing ? "Processing..." : `Donate $${amount || 0}`}
+            {processing ? "Processing..." : `Donate ₹${amount || 0}`}
           </Button>
         </form>
       </CardContent>

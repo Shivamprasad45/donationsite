@@ -1,37 +1,42 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { ArrowLeft, Save, User } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useGetProfileQuery, useUpdateProfileMutation } from '@/store/services/usersApi'
-import { useDispatch } from 'react-redux'
-import { addToast } from '@/store/slices/uiSlice'
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, Save, User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+} from "@/store/services/usersApi";
+import { useDispatch } from "react-redux";
+import { addToast } from "@/store/slices/uiSlice";
 
 const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
-  address: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zipCode: z.string().optional(),
-    country: z.string().optional(),
-  }).optional(),
-})
+  address: z
+    .object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipCode: z.string().optional(),
+      country: z.string().optional(),
+    })
+    .optional(),
+});
 
-type ProfileFormData = z.infer<typeof profileSchema>
+type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const dispatch = useDispatch()
-  const { data: profile, isLoading } = useGetProfileQuery()
-  const [updateProfile, { isLoading: updating }] = useUpdateProfileMutation()
+  const dispatch = useDispatch();
+  const { data: profile, isLoading } = useGetProfileQuery("");
+  const [updateProfile, { isLoading: updating }] = useUpdateProfileMutation();
 
   const {
     register,
@@ -40,42 +45,46 @@ export default function ProfilePage() {
     reset,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-  })
+  });
 
   // Reset form when profile data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.user) {
       reset({
         name: profile.user.name,
-        phone: profile.user.phone || '',
+        phone: profile.user.phone || "",
         address: profile.user.address || {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: '',
+          street: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
         },
-      })
+      });
     }
-  }, [profile, reset])
+  }, [profile, reset]);
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
-      await updateProfile(data).unwrap()
-      
-      dispatch(addToast({
-        type: 'success',
-        title: 'Profile Updated',
-        message: 'Your profile has been successfully updated',
-      }))
+      await updateProfile(data).unwrap();
+
+      dispatch(
+        addToast({
+          type: "success",
+          title: "Profile Updated",
+          message: "Your profile has been successfully updated",
+        })
+      );
     } catch (error: any) {
-      dispatch(addToast({
-        type: 'error',
-        title: 'Update Failed',
-        message: error.data?.error || 'Failed to update profile',
-      }))
+      dispatch(
+        addToast({
+          type: "error",
+          title: "Update Failed",
+          message: error.data?.error || "Failed to update profile",
+        })
+      );
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +94,7 @@ export default function ProfilePage() {
           <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -120,7 +129,7 @@ export default function ProfilePage() {
                     <Label htmlFor="name">Full Name</Label>
                     <Input
                       id="name"
-                      {...register('name')}
+                      {...register("name")}
                       placeholder="Enter your full name"
                     />
                     {errors.name && (
@@ -134,7 +143,7 @@ export default function ProfilePage() {
                     <Label htmlFor="phone">Phone Number</Label>
                     <Input
                       id="phone"
-                      {...register('phone')}
+                      {...register("phone")}
                       placeholder="Enter your phone number"
                     />
                     {errors.phone && (
@@ -149,31 +158,31 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                       <div className="md:col-span-2">
                         <Input
-                          {...register('address.street')}
+                          {...register("address.street")}
                           placeholder="Street address"
                         />
                       </div>
                       <div>
                         <Input
-                          {...register('address.city')}
+                          {...register("address.city")}
                           placeholder="City"
                         />
                       </div>
                       <div>
                         <Input
-                          {...register('address.state')}
+                          {...register("address.state")}
                           placeholder="State"
                         />
                       </div>
                       <div>
                         <Input
-                          {...register('address.zipCode')}
+                          {...register("address.zipCode")}
                           placeholder="ZIP Code"
                         />
                       </div>
                       <div>
                         <Input
-                          {...register('address.country')}
+                          {...register("address.country")}
                           placeholder="Country"
                         />
                       </div>
@@ -182,7 +191,7 @@ export default function ProfilePage() {
 
                   <Button type="submit" disabled={updating}>
                     <Save className="h-4 w-4 mr-2" />
-                    {updating ? 'Saving...' : 'Save Changes'}
+                    {updating ? "Saving..." : "Save Changes"}
                   </Button>
                 </form>
               </CardContent>
@@ -202,7 +211,9 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">{profile?.user?.name}</h3>
-                    <p className="text-sm text-gray-600">{profile?.user?.email}</p>
+                    <p className="text-sm text-gray-600">
+                      {profile?.user?.email}
+                    </p>
                   </div>
                 </div>
 
@@ -214,7 +225,9 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Donations Made</span>
+                    <span className="text-sm text-gray-600">
+                      Donations Made
+                    </span>
                     <span className="font-semibold">
                       {profile?.user?.donationHistory?.length || 0}
                     </span>
@@ -222,10 +235,9 @@ export default function ProfilePage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Member Since</span>
                     <span className="font-semibold">
-                      {profile?.user?.createdAt ? 
-                        new Date(profile.user.createdAt).toLocaleDateString() : 
-                        'N/A'
-                      }
+                      {profile?.user?.createdAt
+                        ? new Date(profile.user.createdAt).toLocaleDateString()
+                        : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -263,5 +275,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

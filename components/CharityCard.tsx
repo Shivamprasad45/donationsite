@@ -22,7 +22,7 @@ export function CharityCard({ charity }: CharityCardProps) {
         <img
           src={
             charity.logo ||
-            "/placeholder.svg?height=200&width=400&query=charity logo"
+            `https://picsum.photos/seed/${Math.floor(Math.random() * 200)}/600/400`
           }
           alt={charity.name}
           className="w-full h-48 object-cover rounded-t-lg"

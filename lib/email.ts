@@ -1,37 +1,47 @@
-import { Resend } from 'resend'
+import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export interface EmailOptions {
-  to: string | string[]
-  subject: string
-  html: string
-  from?: string
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
 }
 
-export async function sendEmail({ to, subject, html, from = 'noreply@charityplatform.com' }: EmailOptions) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  from = "onboarding@resend.dev",
+}: EmailOptions) {
   try {
     const { data, error } = await resend.emails.send({
       from,
       to,
       subject,
-      html
-    })
+      html,
+    });
 
     if (error) {
-      console.error('Email sending error:', error)
-      throw new Error('Failed to send email')
+      console.error("Email sending error:", error);
+      throw new Error("Failed to send email");
     }
 
-    return data
+    return data;
   } catch (error) {
-    console.error('Email service error:', error)
-    throw error
+    console.error("Email service error:", error);
+    throw error;
   }
 }
 
 export const emailTemplates = {
-  donationConfirmation: (donorName: string, charityName: string, amount: number, receiptNumber: string) => `
+  donationConfirmation: (
+    donorName: string,
+    charityName: string,
+    amount: number,
+    receiptNumber: string
+  ) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #2563eb;">Thank you for your donation!</h2>
       <p>Dear ${donorName},</p>
@@ -76,7 +86,11 @@ export const emailTemplates = {
     </div>
   `,
 
-  impactReportNotification: (donorName: string, charityName: string, reportTitle: string) => `
+  impactReportNotification: (
+    donorName: string,
+    charityName: string,
+    reportTitle: string
+  ) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #2563eb;">New Impact Report from ${charityName}</h2>
       <p>Dear ${donorName},</p>
@@ -84,5 +98,5 @@ export const emailTemplates = {
       <p>See how your donations are making a difference!</p>
       <p>Best regards,<br>The Charity Platform Team</p>
     </div>
-  `
-}
+  `,
+};

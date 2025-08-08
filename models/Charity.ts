@@ -162,7 +162,14 @@ const CharitySchema = new Schema<ICharity>(
       },
     },
     logo: String,
-    images: [String],
+    images: {
+      type: [String],
+      default: [
+        "https://picsum.photos/seed/1/600/400",
+        "https://picsum.photos/seed/2/600/400",
+        "https://picsum.photos/seed/3/600/400",
+      ],
+    },
     isVerified: {
       type: Boolean,
       default: false,

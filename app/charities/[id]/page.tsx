@@ -88,7 +88,7 @@ export default function CharityDetailsPage() {
               <img
                 src={
                   _doc.logo ||
-                  "/placeholder.svg?height=200&width=200&query=charity logo"
+                  `https://picsum.photos/seed/${Math.floor(Math.random() * 200)}/600/400`
                 }
                 alt={_doc.name}
                 className="w-32 h-32 rounded-lg object-cover"
@@ -152,10 +152,10 @@ export default function CharityDetailsPage() {
                 )}
 
                 <div className="flex gap-2">
-                  {charity.website && (
+                  {_doc.website && (
                     <Button variant="outline" size="lg" asChild>
                       <a
-                        href={charity.website}
+                        href={_doc.website}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
