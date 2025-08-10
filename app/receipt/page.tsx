@@ -6,36 +6,29 @@ import { CheckCircle, Download, Share, ArrowLeft, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { da } from "date-fns/locale";
 export const dynamic = "force-dynamic";
 export default function ReceiptPage() {
   // const searchParams = useSearchParams();
   const router = useRouter();
   const [donation, setDonation] = useState<any>(null);
+  const { user, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   // In a real app, you'd get this from the URL params or local storage
   useEffect(() => {
-    // Mock donation data - in real app, fetch from API using donation ID
-    const mockDonation = {
-      id: "1",
-      amount: 100,
-      currency: "USD",
-      receiptNumber: "RCP-1234567890-ABC123",
-      createdAt: new Date().toISOString(),
-      charity: {
-        name: "Education for All Foundation",
-        logo: "/placeholder.svg?height=80&width=80",
-        registrationNumber: "REG123456",
-      },
-      donor: {
-        name: "John Doe",
-        email: "john@example.com",
-      },
-      message: "Keep up the great work!",
-      dedicatedTo: "In memory of Jane Smith",
-      paymentMethod: "stripe",
-      transactionId: "pi_1234567890",
-    };
-    setDonation(mockDonation);
+    if (user) {
+      async function fetchDonation() {
+        const fech = await fetch(`/api/donations/getDonation?user=${user?.id}`);
+        const data = await fech.json();
+
+        setDonation(data);
+      }
+      fetchDonation();
+    }
   }, []);
 
   const handleDownloadReceipt = () => {
@@ -99,7 +92,7 @@ export default function ReceiptPage() {
             </h1>
             <p className="text-green-700 mb-4">
               Thank you for your generous donation of ${donation.amount} to{" "}
-              {donation.charity.name}
+              {donation.charityName}
             </p>
             <div className="flex justify-center space-x-4">
               <Button onClick={handleDownloadReceipt}>
